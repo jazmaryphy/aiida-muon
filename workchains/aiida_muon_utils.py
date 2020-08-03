@@ -11,9 +11,11 @@ from pymatgen.analysis.defects.generators import VacancyGenerator, SubstitutionG
 from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnalyzer
 
 ####### Tess defect generator
-from aiida.aiida_muons.workchains.aiida_muon_tess import get_interstitials as tess_interstitials
+##from aiida.aiida_muons.workchains.aiida_muon_tess import get_interstitials as tess_interstitials
+from aiida_muon_tess import get_interstitials as tess_interstitials
 ####### UGRID
-from aiida.aiida_muons.workchains.aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
+#from aiida.aiida_muons.workchains.aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
+from aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
 ######
 ####### AiiDA stuff
 
@@ -601,7 +603,8 @@ def check_group_elements(group_name):
 
 def run_hyperfine(uuid, group, pp_codename, projwfc_codename, code_runtime_options=None):  # I add name
     from aiida_quantumespresso.utils.resources import get_default_options, get_automatic_parallelization_options
-    from aiida.aiida_muons.workchains.hf import PwContactFieldWorkChain
+    ##from aiida.aiida_muons.workchains.hf import PwContactFieldWorkChain
+    from hf import PwContactFieldWorkChain
     from aiida.engine import submit, run, launch
     from aiida.orm import Group, load_node
     
