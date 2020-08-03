@@ -1,12 +1,17 @@
 import argparse, os, yaml
 import warnings
-from aiida.aiida_muons.workchains.aiida_muon_utils import generate_supercells, run_wc, check_group_elements, run_hyperfine, \
-                                                          grid_parameters,  show_structures, show_structures_with_muon
-from aiida.aiida_muons.workchains.aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
-#from aiida.aiida_muons.workchains.aiida_muesr_utils import get_fields
+##from aiida.aiida_muons.workchains.aiida_muon_utils import generate_supercells, run_wc, check_group_elements, run_hyperfine, \
+##                                                          grid_parameters,  show_structures, show_structures_with_muon
+from aiida_muon_utils import generate_supercells, run_wc, check_group_elements, run_hyperfine, \
+                             grid_parameters,  show_structures, show_structures_with_muon
+##from aiida.aiida_muons.workchains.aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
+from aiida_muesr_ugrid import generate_uniform_grid, show_cell, show_structure_with_muon
+##from aiida.aiida_muons.workchains.aiida_muesr_utils import get_fields
+##from aiida_muesr_utils import get_fields
 from pymatgen.core import Structure
 from aiida import load_profile
-from aiida.aiida_muons import print_table
+###from aiida.aiida_muons import print_table
+from print_table import print_table
 from flask_restplus import inputs
 
 import numpy as np
@@ -146,11 +151,11 @@ if __name__ == "__main__":
                                     [int(x) for x in case['sc_size'].split()], \
                                     gen_mode, pos)
         
-        if yes_or_no("Show structure?"):
-           for mu_i, mu_j in enumerate(mu_position):
-               print("Grid position {}, {}".format(mu_i, mu_j))
-               show_structures_with_muon(structure_copy,  mu_position=mu_j,  sc_size=(1,1,1))
-               #show_structures_with_muon(structure_copy,  mu_position=mu_j,  sc_size=[int(x) for x in case['sc_size'].split()])
+#        if yes_or_no("Show structure?"):
+#           for mu_i, mu_j in enumerate(mu_position):
+#               print("Grid position {}, {}".format(mu_i+1, mu_j))
+#               show_structures_with_muon(structure_copy,  mu_position=mu_j,  sc_size=(1,1,1))
+#               #show_structures_with_muon(structure_copy,  mu_position=mu_j,  sc_size=[int(x) for x in case['sc_size'].split()])
              
         print("Generated ", len(supercells) )
         if yes_or_no("Submit them?"):
