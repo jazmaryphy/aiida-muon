@@ -1,45 +1,42 @@
-# imports from python
+# -*- coding: utf-8 -*-
 #from itertools import *
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import numpy as np
 import tess
 
 
-
 ##########################################################
-def compute_voronoi(points):                                                        
-    """ Function to return the python container having information of Voronoi cells for            
-        for given points in 3D space                                                               
+def compute_voronoi(points):
+    """ Function to return the python container having information of Voronoi cells for
+        for given points in 3D space
 
-    Parameters                                                                                          
-        pts = numpy array of points coordinates                                                    
+    Parameters
+        pts = numpy array of points coordinates
 
-    Returns                                                                                         
-        container = python contrainer having information of Voronoi cells                          
+    Returns
+        container = python contrainer having information of Voronoi cells
     """
 
     P = np.array(points)
-    
+
     # box limits along x, y, and z axis
     Lx = 50
     Ly = 50
     Lz = 50
-    
-    limits=[(-50,-50,-50),(50,50,50)]  # two 3-tuples lower and upper limits
-    
-    cntr = tess.Container(P, limits=limits, periodic=False)#, periodic=(False, False, False))
+
+    cntr = tess.Container(P, ((-50, -50, -50),(50, 50, 50)), periodic=(False, False, False))
 
     return cntr
 
 ##########################################################
 def calculate_midpoint(p1, p2):
     """ Calculate the midpoint given coordinates
-    
-    Parameters                                                                                          
-        p1, p2 = numpy array of point coordinates                                                  
-                                                                                                   
-    Returns                                                                                         
-        midpoint = numpy array of midpoint coordinates                                             
+
+    Parameters
+        p1, p2 = numpy array of point coordinates
+
+    Returns
+        midpoint = numpy array of midpoint coordinates
     """
 
     return((p1[0]+p2[0])/2.0, (p1[1]+p2[1])/2.0, (p1[2]+p2[2])/2.0)
@@ -64,8 +61,8 @@ def calculate_polygon_centroid(poly_pts):
 def neighbor_list(list):
     """ Function to form unique neighboring pairs along the polygon perimeter
 
-    Parameters 
-        list = list of indicies of Voronoi vertices forming the perimeter                          
+    Parameters
+        list = list of indicies of Voronoi vertices forming the perimeter
 
     Returns
         list = list of neighboring pairs as tuples
@@ -143,7 +140,7 @@ ce site
         cntr = python contrainer having information of Voronoi cells
 
     Returns
-        Face center = numpy array of Voronoi face center coordinates                               
+        Face center = numpy array of Voronoi face center coordinates
     """
 
     list_face_vertices_indices = cntr[site_num].face_vertices()
@@ -163,7 +160,7 @@ ce site
 
     Fc = list_face_centroid
 
-    # converting list to numpy array                                                               
+    # converting list to numpy array
     Fc = np.asarray(Fc)
 
     return Fc
@@ -185,7 +182,7 @@ def get_all_interstitials(bulk_structure):
     all_nbs = bulk_structure.get_all_neighbors(r=10)
     for site_num in range(bulk_structure.num_sites):
         site = bulk_structure.cart_coords[site_num]
-        
+
 
         points = [site]
 
@@ -193,8 +190,8 @@ def get_all_interstitials(bulk_structure):
         for nb in all_nbs[site_num]:
             if type(nb) == tuple:
                 points.append(nb[0].coords)
-         #   else:                              ########## 
-         #       points.append(nb.site.coords) #  has not attribute of site.coords
+            else:
+                points.append(nb.site.coords)
 
         ### converting list to numpy array
         points = np.asarray(points)
@@ -236,7 +233,7 @@ def get_pos_in_prim_cell(bulk_structure, a):
     Returns
         a2 = cartesian coordinates, such that fractional coordination = [0,1)
     """
-    
+
     a1 = np.array(a)
     inv_cell = np.linalg.inv(bulk_structure.lattice.matrix)
 
@@ -254,20 +251,20 @@ def get_interstitials(bulk_structure):
     Get symmetry inequivalent interstitials
     """
     all_interstitials = get_all_interstitials(bulk_structure)
-    
+
     imp_structure = bulk_structure.copy()
-    
-    for element in all_interstitials: 
-        name, pos = element 
-        try: 
-            imp_structure.append('X', pos, coords_are_cartesian=True, validate_proximity=True) 
+
+    for element in all_interstitials:
+        name, pos = element
+        try:
+            imp_structure.append('X', pos, coords_are_cartesian=True, validate_proximity=True)
         except ValueError:
-            continue 
+            continue
 
     SA = SpacegroupAnalyzer(imp_structure)
-    
+
     sim_structure = SA.get_symmetrized_structure()
-    
+
     frac_positions = []
 
     for group in sim_structure.equivalent_sites:
@@ -276,6 +273,5 @@ def get_interstitials(bulk_structure):
         else:
             frac_positions.append( group[0].frac_coords )
             continue
-    
+
     return frac_positions
-    

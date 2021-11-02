@@ -1,19 +1,23 @@
+# -*- coding: utf-8 -*-
 def print_table(items, header=None, wrap=True, max_col_width=20, wrap_style="wrap", row_line=False, fix_col_width=False):
     ''' Prints a matrix of data as a human readable table. Matrix
     should be a list of lists containing any type of values that can
     be converted into text strings.
+
     Two different column adjustment methods are supported through
     the *wrap_style* argument:
-    
+
        wrap: it will wrap values to fit max_col_width (by extending cell height)
        cut: it will strip values to max_col_width
+
     If the *wrap* argument is set to False, column widths are set to fit all
     values in each column.
+
     This code is free software. Updates can be found at
     https://gist.github.com/jhcepas/5884168
-    
+
     '''
-        
+
     if fix_col_width:
         c2maxw = dict([(i, max_col_width) for i in range(len(items[0]))])
 #        wrap = True
@@ -68,14 +72,14 @@ def print_table(items, header=None, wrap=True, max_col_width=20, wrap_style="wra
         else:
             row = extra_line
             is_extra = True
- 
+
         if row_line and not is_extra and not (header and current_item == 0):
             if row:
                 print(' | '.join(['-'*c2maxw[col] for col in range(len(row)) ]))
             else:
                 print(' | '.join(['='*c2maxw[col] for col in range(len(extra_line)) ]))
 
-                
+
 if __name__ == '__main__':
     print_table([[3, 2, "whadisdfasdfsdafsadfsadfsdfdsaever"], [5,"this dfsdfsdfasdfsadfsadfasdfs a test",777], [1,1,1]],
             header=[ "number 1", "Column 2", "col3"],
@@ -83,17 +87,17 @@ if __name__ == '__main__':
             row_line=True, fix_col_width=True)
 
 
-# This is column  | Column number 2 | col3           
-# number 1        |                 |                
+# This is column  | Column number 2 | col3
+# number 1        |                 |
 # =============== | =============== | ===============
 # 3               | 2               | {'bla': [1, 2],
 #                 |                 |  'whatever': 1}
 # --------------- | --------------- | ---------------
-# 5               | this is a test  | 777            
-#                 |              of |                
-#                 |  wrapping text  |                
-#                 |   with the new  |                
-#                 | function        |                
+# 5               | this is a test  | 777
+#                 |              of |
+#                 |  wrapping text  |
+#                 |   with the new  |
+#                 | function        |
 # --------------- | --------------- | ---------------
-# 1               | 1               | 1              
+# 1               | 1               | 1
 # =============== | =============== | ===============
