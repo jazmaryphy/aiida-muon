@@ -136,7 +136,7 @@ class MergeField(object):
         """
         """
         if self.length_of_data == 1:
-            self.merge_fields_average = {1:self.fields[0]}
+            self.merge_fields_average = {'1*':self.fields[0]}
             self.merge_indexes_sublists = {1:[0]}  
             return self.merge_fields_average, self.merge_indexes_sublists
         
