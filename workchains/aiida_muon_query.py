@@ -4,6 +4,7 @@
 # In[1]:
 
 
+import collections
 import numpy as np
 from aiida import orm
 from tabulate import tabulate
@@ -287,7 +288,7 @@ class QueryCalculationsFromGroup(object):
                    PW,
                    status_number_PW                  
                   )
-        print(tabulate(data, headers=headers)) 
+        print(tabulate(data, headers=headers, tablefmt="github")) 
 
     def find_relaxed_PK(self, uuid):
         """Find relaxed structure UUID for a particular process label
@@ -654,6 +655,42 @@ class QueryNodeEnergyPositions(object):
 # In[4]:
 
 
+def safe_div(x, y):
+    return 0. if abs(float(y)) == 0. else x / y
+
+def flatten(x):
+    if isinstance(x, collections.Iterable):
+        return [a for i in x for a in flatten(i)]
+    else:
+        return [x]
+    
+def find_key_and_value(dic, value):
+    """
+    """
+    for key, values in dic.items():
+        if isinstance(values, collections.Iterable):
+            for val in values:
+                if val==value:
+                    return key, val
+        else:
+            if value==values:
+                return key, value
+    
+def split_element_and_number(s):
+    """This function separates elementt wit it is index.
+
+    Parameters
+    ----------
+    s : str
+        input string e.g 'Fe1'
+    Returns
+    -------
+    tuple
+         (element name, element index)
+    """
+    return (''.join(filter(str.isdigit, s)) or None,
+            ''.join(filter(str.isalpha, s)) or None)
+    
 def ratio_of_magmom(uuid, structure):
     """To check the ratio of the magnetic moment between the calculated and experimental magnetic moments
     Parameters:
@@ -662,34 +699,53 @@ def ratio_of_magmom(uuid, structure):
                      The uuid identifier of the calculations
                structure : (Structure)
                          Structure object to obtain the experimental moments
-    Returns:
-           The species, experimental moment, calculated moment and their ratio of experimental to calculated moment
-    """
-    np.seterr(divide='ignore', invalid='ignore') #ignore warning of division by zero
-    m_calc = orm.load_node(uuid)
-    species = m_calc.outputs.output_trajectory.get_array("atomic_species_name")
-    out_moment = m_calc.outputs.output_trajectory.get_array('atomic_magnetic_moments')
-    out_moment = out_moment.reshape(len(species),)
+    Returns: 
+    """    
+    from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnalyzer
+    
+    calc = orm.load_node(uuid)
+    species = calc.outputs.output_trajectory.get_array("atomic_species_name")
+    #print(species)
+    output_moment = calc.outputs.output_trajectory.get_array('atomic_magnetic_moments')
+    output_moment = output_moment.reshape(len(species),)
+    #print(output_moment)
+    
+    # pristine structure
+    structure1 = structure.copy()
+    magnetic_structure = CollinearMagneticStructureAnalyzer(structure1, 
+                                                            make_primitive=False)
+    
+    magnetic_species_and_magmoms = magnetic_structure.magnetic_species_and_magmoms
+    magnetic_species_and_magmoms_values = list(magnetic_species_and_magmoms.values())
+    magnetic_species_and_magmoms_values = flatten(magnetic_species_and_magmoms_values)
+    max_magnetic_species_and_magmoms_values = max(magnetic_species_and_magmoms_values)
+    mag_specie, max_spin = find_key_and_value(magnetic_species_and_magmoms, 
+                                              max_magnetic_species_and_magmoms_values
+                                             )
+    #print(mag_specie)
+    magnetic_species = []
+    magnetic_species_index = []
+    for i, msp in  enumerate(species):
+        if mag_specie==split_element_and_number(msp)[1]:
+            magnetic_species.append(msp)
+            magnetic_species_index.append(i)
+    magnetic_species_index = np.array(magnetic_species_index)
+    #print(magnetic_species_index)
+    magnetic_atoms_magmom = np.array(output_moment[magnetic_species_index])
+    ratios = []
+    index = []
+    for i, m in enumerate(magnetic_atoms_magmom):
+        index.append(i+1)
+        if abs(float(m)) < 1e-3:
+            ratios.append('inf')
+        else:
+            ratios.append(max_spin/m)
+    
+    tab = zip(index, magnetic_species, magnetic_atoms_magmom, ratios)
+    headers=["##", 
+             "MAGNETIC SPECIES", 
+             "DFT MOMENTS (muB)", 
+             "RATIO (max(EXP="+str(max_spin)+")"+"/DFT)"
+            ]
+    print(tabulate(tab, headers=headers, tablefmt="github"))
 
-    magmoms = structure.site_properties['magmom']
-    inp_moment = np.empty([0,3])
-    for comp in magmoms:
-        inp_moment = np.vstack([inp_moment, [comp[0], comp[1], comp[2]]])
-
-    # filter non zero moments
-    #inp_moment = [m for m in inp_moment if abs(np.any(m))]
-    inp_moment = np.linalg.norm(inp_moment, axis=1)
-
-    ratio_m = inp_moment/out_moment
-    index_species_moments_ratio = []
-    index_species_moments_ratio.append(["#", "SP", "EXPT_M", "CALC_M", "RATIO"])
-    print("#", "SP", "EXPT_M", "CALC_M", "RATIO")
-    for idx, (sp, imag, omag, r) in enumerate(zip(species, inp_moment, out_moment, ratio_m)):
-              #if abs(np.any(mag)):
-              index_species_moments_ratio.append([idx, sp, imag, omag, r])
-              print(idx+1, sp, imag, omag, r)
-
-    return index_species_moments_ratio
-
-
-# In[ ]:

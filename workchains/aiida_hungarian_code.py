@@ -15,15 +15,25 @@ from scipy.optimize import linear_sum_assignment
 
 def group_values(calc_values):
     """Here, we pass the nd.array of total fields with
-    their labels, index and total field value
-    e.g cost_array =  np.array([['$B_{\\mu}^{s}$', '1-1', '0.9694245004388192'],
+    their labels, index and total field value to group the values
+    e.g calc_values = np.array([['$B_{\\mu}^{s}$', '1-1', '0.9694245004388192'],
                                 ['$B_{\\mu}^{s}$', '2-1', '0.3696106159894605'],
                                 ['$B_{\\mu}^{s}$', '2-2', '0.5802625057445634'],
                                 ['$B_{\\mu}^{s}$', '2-3', '1.0119281898999035'],
                                 ['$B_{\\mu}^{s}$', '3-1', '2.0119281898999035']]
                                 )
-    Returns:
-          cost array matrix and it is size
+        and returns a dictionary values based on their index
+        {1: np.array([0.9694245]),
+         2: np.array([0.36961062, 0.58026251, 1.01192819]),
+         3: np.array([2.01192819])}
+
+                                
+    Parameters
+    ----------
+    calc_values : numpy.ndarray
+        array containing the label, index and value of field contribution
+    Returns: dict
+        A dictionary of group values
     """
     import copy
     def group(items):
@@ -67,22 +77,53 @@ def group_values(calc_values):
 # In[3]:
 
 
-class MergeField(object):
-    """Function to merge a list of values based on a threshold
+class MergeField:
+    """This class is use to Merge/Collapse a set list of values that their
+    difference is less than a threshold into unique set of values .
     """
     
     @staticmethod
     def index_of_items_from_lists(list_lists, list_items):
-        """
+        """Find index of items in a lists
+        
+        Parameters
+        ----------
+        list_lists : list
+            list of values
+        list_items : list
+            list of values to identify index from list_lists
+        Returns
+        -------
+        list
         """
         return [list(list_lists).index(item) for item in list_items]
+
+    @staticmethod
+    def store_dict_to_file(data_object, filename, uuid_index):
+        """To store a data object
+        
+        Parameters:
+        -----------
+        data_object : numpuy.ndarray
+            A data objec to store in txt file (just for fun to make it editable)
+        filenmae : str
+            name of file to store data
+        uuid_index : int
+            index for each file
+        """
+        import pprint
+        dic = data_object.copy()
+        with open(filename, "w") as f:
+            f.write(pprint.pformat(dic, indent=4))
+   
 
     def __init__(
         self,
         total_fields,
         muon_sites,
-        uuid_index=1,
-        threshold=0.1
+        uuid_index = 1,
+        threshold = 0.1,
+        filename = None
     ):
         """
         Parameters
@@ -94,12 +135,20 @@ class MergeField(object):
         uuid_index : int
             calculation index, Default = 1
         threshold : float
+        filename : str
+            file name to save data object
             
         """
         self.total_fields = np.array(total_fields)
         self.muon_sites = muon_sites
         self.uuid_index = uuid_index
         self.threshold = threshold
+        self.filename = filename   
+        
+        if filename is None or filename == "":
+            self.filename = "data"
+        else:
+            self.filename = filename
         
         if len(self.total_fields) == 1:
             self.index  = self.total_fields[:,1]
@@ -110,7 +159,9 @@ class MergeField(object):
             self.labels = list(set(self.total_fields[:,0]))
             self.fields = list(np.float_(self.total_fields[:,2]))
         
-        #self.init_musite_index 
+        # The self.init_musite_index and self.init_musite_value
+        # to keep note of the index of calculated field (not replicas)
+        # and its value 
         for i, ind in enumerate(self.index):
             split_ = ind.split('-')
             if split_[-1] == '1':
@@ -133,7 +184,7 @@ class MergeField(object):
             
         
     def merge_fields(self):
-        """
+        """ Perform the merging of values
         """
         if self.length_of_data == 1:
             self.merge_fields_average = {'1*':self.fields[0]}
@@ -151,9 +202,10 @@ class MergeField(object):
         # create a list of lists, put the first value of the source data in the first
         lists = [[fields[0]]]
         for i, x in enumerate(fields[1:]):
-            # if the gap from the current item to the previous is more than delta
+            # if the gap from the current item to the previous is more than the threshold
             # Note: the previous item is the last item in the last list
-            # Note: the '> 1' is the part you'd modify to make it stricter or more relaxed
+            # Note: the '> self.threshold' is the part you'd modify to make it stricter 
+            # or more relaxed
             if (x - lists[-1][-1]) / avg[i] > self.threshold:
                 # then start a new list
                 lists.append([])
@@ -174,50 +226,59 @@ class MergeField(object):
             if self.init_musite_value in l:
                 string = string+'*'
             self.merge_fields_average[string] = np.average(l)
-        
-        #print('self.merge_fields_average = ', self.merge_fields_average)
 
         return self.merge_fields_average, self.merge_indexes_sublists
     
     def summary(self):
+        """ Display the summary of informations
         """
-        """
-        muon_sites = np.array(self.muon_sites) 
+        muon_sites = np.array(self.muon_sites)
         fields_dict = self.merge_fields()[0]
         group_indexes = self.merge_fields()[1]
+
+        filename = self.filename+'_merge_index_calc_'+str(self.uuid_index)+'.txt'
+        print('... Saving complete merge index\'s for calculation #{} to a file : {}'.
+              format(self.uuid_index,
+                     filename
+                    )
+             )
+        self.store_dict_to_file(group_indexes, filename, self.uuid_index)
+
         sites = []
         m_sites = []
         fields = []
         number_dict = {}
+        multiplicity = []
         for items1, items2 in zip(group_indexes.items(), fields_dict.items()):
             mu_index = items1[1][0]
             if '*' in items2[0]:
-                mu_index = self.init_musite_index          
+                mu_index = self.init_musite_index
             number_dict[items1[0]] = len(items1[1])
             sites.append(items2[0])
             fields.append(items2[1])
             m_sites.append(muon_sites[mu_index])
+            multiplicity.append(len(items1[1]))
         m_sites = np.around(np.array(m_sites), 6)
-        tab = zip(sites, m_sites, fields)
-        headers = ['##', 'POSITION (x,y,z)', 'NET FIELD (Tesla)']       
+        tab = zip(sites, m_sites, fields, multiplicity)
+        headers = ['##', 'POSITION (x,y,z)', 'NET FIELD (Tesla)', 'MULTIPLICITY ##']
             
-        print('\n... Total number of {} equiv fields are merged to give {} distinct field ...'.
+        print('\n... Total number of {} equiv fields are merged to give {} distinct field ...\n'.
               format(self.length_of_data, 
                      len(number_dict)
                     )
              )
-        print('\n... Each distinct field has nth terms as : {} ...\n'.format(number_dict))
+#         print('\n... Each distinct field has nth terms as : {} ...\n'.format(number_dict))
         print(tabulate(tab, headers=headers, tablefmt="github"))
         print('\n\t[*] Means calculated muon site ...\n')
         
         
     def data_object(self):
-        """
+        """Prepare the merge values into a form of input data of 'total_fields'
         """
         fields_dict = self.merge_fields()[0]
         data = [] 
         for i, items in enumerate(fields_dict.items()):
-            data.append([str(self.labels[0]),  str(self.uuid_index)+'-'+str(i+1),    items[1]])
+            data.append([str(self.labels[0]),  str(self.uuid_index)+'-'+str(items[0]),    items[1]])
         return data
 
 
@@ -233,18 +294,57 @@ try:
     import numpy as np
     from scipy.optimize import linear_sum_assignment
 except ImportError:
-    raise HungarianError("NumPy is not installed.")
+    raise HungarianError("numpy or scipy not installed.")
     
     
-class HungarianAlgorithm(object):
+class HungarianAlgorithm:
+    """This class perfrom a Hungarian algorithm to assign experimental values
+        to calculated values
     """
-    """
+    
+    
+    @staticmethod
+    def __cost_matrix(
+        calculated_values,
+        experimental_values        
+    ):
+
+        """Calculate the cost and real matrix. The cost matrix is weight of task to
+        assign each experimental values to any calculated values, which is absolute
+        difference between experimental and calculated values. The real matrix 
+        is weight of calculated value only.
+        
+        Parameters
+        ----------
+        calculated_values : dict, list
+            calculated value
+        experimental_values : list
+            experimental value     
+            
+        Returns
+        -------
+        tuple
+        cost_matrix : numpy.ndarray
+            the cost matrix to optimized
+        real matrix :  numpy.ndarray
+            the real matrix of the calculated values
+        """
+        nrows = len(experimental_values)
+        ncols = len(calculated_values)
+        cost_matrix = np.zeros([nrows, ncols]) 
+        real_matrix = np.zeros([nrows, ncols])
+        for i, val in enumerate(experimental_values):
+            cost_matrix[i] = [np.abs(val-c) for c in calculated_values] 
+            real_matrix[i] = [np.abs(0-c) for c in calculated_values]
+        return cost_matrix, real_matrix        
+    
     def __init__(
         self, 
         calculated_values=None, 
         experimental_values=None
     ):
-        """Function to perform Hungarian algorithm
+        """This class perfrom a Hungarian algorithm to assign experimental values
+        to calculated values
         
         Parameters
         ----------
@@ -300,52 +400,30 @@ class HungarianAlgorithm(object):
         else:
             print('ALL EXPERIMENTAL DATA CAN BE ASSIGNED...')
         print('BY HUNGARIAN ALGORITHM TO GIVE...')
+        match_data_object = {}
         for i, value in enumerate(self._PotentialValues):
             if self._data_type == 'dict':
-                print('VALUE  #{} :: = {} Tesla from calculation {}.'.
+                other_values, index = self.check_other_values_and_index(value=value)
+                print('VALUE  #{} :: = {} in Tesla from calculation {}.'.
                       format(i+1, 
                              value, 
-                             self.check_index(value=value)
+                             index
                             )
                      )
-                self.check_values(value=value)        
+                print('\tCONTAINS {} SYMMETRY REPLICAS...'.format(len(other_values)))
+                print('\tWITH VALUES = {} in Tesla.'.format(other_values))      
             else:
-                print('VALUE  #{} :: = {} Tesla.'.format(i+1, value))          
+                print('VALUE  #{} :: = {} Tesla.'.format(i+1, value))
+            match_data_object[i+1] = value
+        print('\nMATCH DATA OBJECT = {}\n'.format(match_data_object))
         return self._PotentialValues
-    
-    def __cost_matrix(
-        self, 
-        calculated_values,
-        experimental_values        
-    ):
-        nrows = len(experimental_values)
-        ncols = len(calculated_values)
-        self._cost_matrix = np.zeros([nrows, ncols]) 
-        self._real_matrix = np.zeros([nrows, ncols])
-        for i, val in enumerate(experimental_values):
-            self._cost_matrix[i] = [np.abs(val-c) for c in calculated_values] 
-            self._real_matrix[i] = [np.abs(0-c) for c in calculated_values]
-        return self._cost_matrix, self._real_matrix
-      
-    
-    def check_index(self, value):
-        """Found the index of value from a group
-        """
-        for key, val in self._dict.items():
-            for v in list(val):
-                if v==value:
-                    return key
-            
-    def check_values(self, value):
+         
+    def check_other_values_and_index(self, value):
         """Found a value from a group
         """
         for key, val in self._dict.items():
-            for v in list(val):
-                if v==value:
-                    if len(val) > 1:
-                        print('\tCONTAINS {} SYMMETRY REPLICAS...'.format(len(val)))
-                        print('\tWITH VALUES = {} Tesla.'.format(list(val)))
-                    
+            if value in val:
+                return val, key                    
         
     def calculate(
         self, 

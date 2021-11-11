@@ -23,83 +23,82 @@ load_profile()
 # In[2]:
 
 
-def slicer(input_list, length_to_split):
-    """Given a list 'input_list' and split it into sublists of lists
-    of different length 'length_to_split'
-    """
-    from itertools import islice
-    input_list = iter(input_list)
-    return [list(islice(input_list, elem)) for elem in length_to_split] 
+# def slicer(input_list, length_to_split):
+#     """Given a list 'input_list' and split it into sublists of lists
+#     of different length 'length_to_split'
+#     """
+#     from itertools import islice
+#     input_list = iter(input_list)
+#     return [list(islice(input_list, elem)) for elem in length_to_split] 
     
-def computeTicks(x, step = 5):
-    """
-    https://stackoverflow.com/questions/12608788/changing-the-tick-frequency-on-x-or-y-axis-in-matplotlib
-    Computes domain with given step encompassing series x
-    @ params
-    x    - Required - A list-like object of integers or floats
-    step - Optional - Tick frequency
-    """
-    import math
-    xMax, xMin = math.ceil(max(x)), math.floor(min(x))
-    dMax, dMin = xMax + abs((xMax % step) - step) + (step if (xMax % step != 0) else 0), xMin - abs((xMin % step))
-    return range(dMin, dMax, step)
+# def computeTicks(x, step = 5):
+#     """
+#     https://stackoverflow.com/questions/12608788/changing-the-tick-frequency-on-x-or-y-axis-in-matplotlib
+#     Computes domain with given step encompassing series x
+#     @ params
+#     x    - Required - A list-like object of integers or floats
+#     step - Optional - Tick frequency
+#     """
+#     import math
+#     xMax, xMin = math.ceil(max(x)), math.floor(min(x))
+#     dMax, dMin = xMax + abs((xMax % step) - step) + (step if (xMax % step != 0) else 0), xMin - abs((xMin % step))
+#     return range(dMin, dMax, step)
 
-def set_shared_label(a, xlabel, ylabel, labelpad = 0.01, figleftpad=0.05, fontsize=12):
-    """Set a y label shared by multiple axes
-    https://stackoverflow.com/questions/6963035/pyplot-axes-labels-for-subplots
-    Parameters
-    ----------
-    a: list of axes
-    ylabel: string
-    labelpad: float
-        Sets the padding between ticklabels and axis label"""
+# def set_shared_label(a, xlabel, ylabel, labelpad = 0.01, figleftpad=0.05, fontsize=12):
+#     """Set a y label shared by multiple axes
+#     https://stackoverflow.com/questions/6963035/pyplot-axes-labels-for-subplots
+#     Parameters
+#     ----------
+#     a: list of axes
+#     ylabel: string
+#     labelpad: float
+#         Sets the padding between ticklabels and axis label"""
 
-    f = a[0,0].get_figure()
-    f.canvas.draw() #sets f.canvas.renderer needed below
+#     f = a[0,0].get_figure()
+#     f.canvas.draw() #sets f.canvas.renderer needed below
 
-    # get the center position for all plots
-    top = a[0,0].get_position().y1
-    bottom = a[-1,-1].get_position().y0
+#     # get the center position for all plots
+#     top = a[0,0].get_position().y1
+#     bottom = a[-1,-1].get_position().y0
 
-    # get the coordinates of the left side of the tick labels
-    x0 = 1
-    x1 = 1
-    for at_row in a:
-        at = at_row[0]
-        at.set_ylabel('') # just to make sure we don't and up with multiple labels
-        bboxes, _ = at.yaxis.get_ticklabel_extents(f.canvas.renderer)
-        bboxes = bboxes.inverse_transformed(f.transFigure)
-        xt = bboxes.x0
-        if xt < x0:
-            x0 = xt
-            x1 = bboxes.x1
-    tick_label_left = x0
+#     # get the coordinates of the left side of the tick labels
+#     x0 = 1
+#     x1 = 1
+#     for at_row in a:
+#         at = at_row[0]
+#         at.set_ylabel('') # just to make sure we don't and up with multiple labels
+#         bboxes, _ = at.yaxis.get_ticklabel_extents(f.canvas.renderer)
+#         bboxes = bboxes.inverse_transformed(f.transFigure)
+#         xt = bboxes.x0
+#         if xt < x0:
+#             x0 = xt
+#             x1 = bboxes.x1
+#     tick_label_left = x0
 
-    # shrink plot on left to prevent ylabel clipping
-    # (x1 - tick_label_left) is the x coordinate of right end of tick label,
-    # basically how much padding is needed to fit tick labels in the figure
-    # figleftpad is additional padding to fit the ylabel
-    plt.subplots_adjust(left=(x1 - tick_label_left) + figleftpad)
+#     # shrink plot on left to prevent ylabel clipping
+#     # (x1 - tick_label_left) is the x coordinate of right end of tick label,
+#     # basically how much padding is needed to fit tick labels in the figure
+#     # figleftpad is additional padding to fit the ylabel
+#     plt.subplots_adjust(left=(x1 - tick_label_left) + figleftpad)
 
-    # set position of label, 
-    # note that (figleftpad-labelpad) refers to the middle of the ylabel
-    a[-1,-1].set_ylabel(ylabel, fontsize=fontsize)
-    a[-1,-1].yaxis.set_label_coords(figleftpad-labelpad,(bottom + top)/2, transform=f.transFigure)
+#     # set position of label, 
+#     # note that (figleftpad-labelpad) refers to the middle of the ylabel
+#     a[-1,-1].set_ylabel(ylabel, fontsize=fontsize)
+#     a[-1,-1].yaxis.set_label_coords(figleftpad-labelpad,(bottom + top)/2, transform=f.transFigure)
 
-    # set xlabel
-    y0 = 1
-    for at in a[-1]:
-        at.set_xlabel('')  # just to make sure we don't and up with multiple labels
-        bboxes, _ = at.xaxis.get_ticklabel_extents(f.canvas.renderer)
-        bboxes = bboxes.inverse_transformed(f.transFigure)
-        yt = bboxes.y0
-        if yt < y0:
-            y0 = yt
-    tick_label_bottom = y0
+#     # set xlabel
+#     y0 = 1
+#     for at in a[-1]:
+#         at.set_xlabel('')  # just to make sure we don't and up with multiple labels
+#         bboxes, _ = at.xaxis.get_ticklabel_extents(f.canvas.renderer)
+#         bboxes = bboxes.inverse_transformed(f.transFigure)
+#         yt = bboxes.y0
+#         if yt < y0:
+#             y0 = yt
+#     tick_label_bottom = y0
 
-    a[-1, -1].set_xlabel(xlabel, fontsize=fontsize)
-    a[-1, -1].xaxis.set_label_coords((top + bottom) / 2, tick_label_bottom - labelpad, transform=f.transFigure)
-    
+#     a[-1, -1].set_xlabel(xlabel, fontsize=fontsize)
+#     a[-1, -1].xaxis.set_label_coords((top + bottom) / 2, tick_label_bottom - labelpad, transform=f.transFigure)
     
 
 
@@ -113,7 +112,7 @@ class SiteDistortionsError(Exception):
 try:
     import numpy as np
 except ImportError:
-    raise SiteDistortionsError("Invalid inputs!")
+    raise SiteDistortionsError("Numpy or other functions not loaded!")
     
 
 class SiteDistortions:
@@ -352,13 +351,13 @@ class SiteDistortions:
 
     @property
     def pristine_structure(self):
+        """Copy of pristine (unitcell) structure.
         """
-        """
-        return self.structure.copy()      
+        return self.structure.copy()     
 
     @property
     def initial_structure(self):
-        """Pymatgen initial structure containing muon
+        """AiiDA pymatgen initial structure containing muon
         """
         return self.pymatgen_input_structure(self.relax_uuid)
 
@@ -369,7 +368,7 @@ class SiteDistortions:
         return self.muon_index(self.initial_structure)
  
     def _initial_structure(self):
-        """Initial structure
+        """Seperate initial structure into initial host and muon positions
         """
         structure = self.initial_structure.copy()
         mu_site = structure.pop(self.mu_i)
@@ -378,29 +377,45 @@ class SiteDistortions:
     @property
     def initial_muon_site(self):
         """Trial initial muon position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite
         """
         return self._initial_structure()[1]
 
     @property
     def initial_ionic_positions(self):
-        """
+        """Initial ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._initial_structure()[0]
 
     def __initial_host_structure(self):
-        """
+        """Initial ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._initial_structure()[0] 
     
     @property
     def initial_host_structure(self):
-        """
+        """Initial host ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite 
         """
         return self.__initial_host_structure()
     
     @property
     def relax_structure(self):
-        """Pymatgen relax structure containing muon
+        """AiiDA pymatgen relax structure containing muon
         """
         return self.pymatgen_output_structure(self.relax_uuid)
     
@@ -411,7 +426,7 @@ class SiteDistortions:
         return self.muon_index(self.relax_structure)
     
     def _relax_structure(self):
-        """Relax structure
+        """Seperate relax structure into relax host and muon positions
         """
         structure = self.relax_structure.copy()
         mu_site = structure.pop(self.mu_f)
@@ -420,29 +435,41 @@ class SiteDistortions:
     @property
     def relax_muon_site(self):
         """Relax muon position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._relax_structure()[1]
 
     def __relax_host_structure(self):
-        """
+        """Relax ionic position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite
         """
         return self._relax_structure()[0]
     
     @property
     def relax_host_structure(self):
-        """
+        """Relax ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self.__relax_host_structure()
     
     @property
     def species_(self):
-        """Ionic species of the structure
+        """Ionic species of the calculated structure
         """
         return self._species(self.relax_uuid)
     
     @property
     def get_species(self):
-        """
+        """Periodic table symbols of ionic species
         """
         species = self.species_
         species[self.mu_f] = 'H'
@@ -452,13 +479,13 @@ class SiteDistortions:
 
     @property
     def n_atoms(self):
-        """
+        """The number of host atoms + muon
         """
         return len(self.get_species) 
     
     @property
     def cell_parameter(self):
-        """
+        """The matrix of cell parameters
         """
         return self._cell_parameters(self.relax_uuid)
     
@@ -680,7 +707,7 @@ class SiteDistortions:
 
     
     def _muon_equivalent_sites(self):
-        """
+        """ Generate symmetry replica of muon sites inside the supercell
         """
         symprec=self.muon_threshold
         sg = self._create_spacegroup(self._SA.get_symmetry_dataset())
@@ -690,13 +717,13 @@ class SiteDistortions:
     
     @property
     def muon_equivalent_sites(self):
-        """
+        """ The symmetry replica of muon sites generated
         """
         return np.array(self._muon_equivalent_sites())
     
     @property
     def n_muon_sites(self):
-        """
+        """ The number of muon sites generated
         """
         return len(self.muon_equivalent_sites)
     
@@ -713,10 +740,10 @@ class SiteDistortions:
         
         Parameters
         ----------
-        positions : nd.array
+        positions : numpy.ndarray
                     3D muon positions (including muon)
         Returns: 
-               3DXN periodic muon sites 
+               PeriodicSite of muon positions
         """
         
         #frac_coords = self.ase_muon_find_equiv()
@@ -730,7 +757,15 @@ class SiteDistortions:
     
     def generate_positions_with_equal_distortions(self):
         """Here we assume all symmetry equivalent sites share the same distortions
-        """
+        
+        Returns
+        -------
+        tuple
+        positions : numpy.ndarray
+            All the positions
+        index : list
+            All the corresponding index
+        """   
         relax_position = self.relax_host_structure.frac_coords
         if self.if_pristine:
             relax_position = self.pristine_structure_supercell.frac_coords
@@ -746,12 +781,15 @@ class SiteDistortions:
         return np.array(positions), index        
         
     def generate_positions_with_distinct_distortions(self):
-        """This function calculates structural distortion for each symmetric muon
+        """This function calculates structural distortion for each replica of muon
         positions.
         
-        Returns:
-        tuple
-        list_positions, muon_index
+        Returns
+        -------
+        positions : numpy.ndarray
+            All the positions
+        index : list
+            All the corresponding index
         """
         SG = self._SG
         PG = self._PG    
@@ -839,6 +877,10 @@ class SiteDistortions:
         Returns
         -------
         tuple
+        positions : numpy.ndarray
+            All the positions
+        index : list
+            All the corresponding index
         """       
         if self.if_with_distortions:
             positions , index = self.generate_positions_with_distinct_distortions()
@@ -849,12 +891,12 @@ class SiteDistortions:
     
     @property
     def get_positions(self):
-        """Returns generated positions
+        """ Returns the generated positions
         """ 
         return self._get_positions()[0]
         
     def save_positions_to_vasp_format(self, file_name=None):
-        """save each structure in a 'file_name_s(mui).vasp'  POSCAR format"""
+        """ Save each structure in a 'file_name_s(mui).vasp'  POSCAR format"""
         if file_name is None:
             file_name = str(self.relax_uuid)
         append_file = []                
@@ -882,7 +924,7 @@ class SiteDistortions:
             print(' \nOutput file save to file : {} ... \n'.format(file_i), end='', flush=True)                                                      
     
     def get_positions_as_dict(self):
-        """make dictionary for all structures"""
+        """ Make dictionary for all structures"""
         Dict = {}        
         list_positions, mu_index = self._get_positions()
         for i, index in enumerate(mu_index):
@@ -896,7 +938,7 @@ class SiteDistortions:
     
     @property
     def summary(self):
-        """
+        """Display summary of the structure generated
         """
         index = self.get_positions()[1]
         print(' \nExpected number of structures = {} \n'.format(self.n_muon_sites+1))

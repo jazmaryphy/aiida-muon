@@ -5,6 +5,7 @@
 
 
 import copy
+import collections
 import numpy as np
 from numpy import dot
 from copy import deepcopy
@@ -28,27 +29,87 @@ load_profile()
 # In[2]:
 
 
+def flatten(x):
+    """Flatten an irregularor regular list of lists of same data type.
+
+    https://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists
+
+    Parameters
+    ----------
+    x : lists
+        an irreqular list of lists e.g x = [[1, 2, 3], [4, 5], 6] 
+        or x = [[1, 2, 3], [4, 5], [6]] 
+    Returns
+    ------- 
+    A list
+    """
+    if isinstance(x, collections.Iterable):
+        return [a for i in x for a in flatten(i)]
+    else:
+        return [x]
+    
 class EstimateFieldContributionsError(Exception):
     """
     """
     pass
 try:
-    import numpy as np
-except ImportError:
-    raise EstimateFieldContributionsError("Invalid inputs!")
+    from aiida import load_profile
     
-class EstimateFieldContributions(object):
-    """To compute contributions of local fields at the 
-    muon sites with or without distortions
+    load_profile() 
+except ImportError:
+    raise EstimateFieldContributionsError("AiiDA profile or other functions not loaded")
+    
+class EstimateFieldContributions:
+    """This class compute contributions of local fields at the 
+    muon sites  with/without contact field and with/without distortions
     """
     
     @staticmethod
     def safe_div(x, y):
         return 0. if abs(float(y)) == 0. else x / y
-    
+
     @staticmethod
-    def load_pymatgen_structure(filename):
-        return Structure.from_file(filename)
+    def flatten(x):
+        """Flatten an irregularor regular list of lists of same data type.
+
+        https://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists
+
+        Parameters
+        ----------
+        x : lists
+            an irreqular list of lists e.g x = [[1, 2, 3], [4, 5], 6] 
+            or x = [[1, 2, 3], [4, 5], [6]] 
+        Returns
+        ------- 
+        A list
+        """
+        if isinstance(x, collections.Iterable):
+            return [a for i in x for a in flatten(i)]
+        else:
+            return [x]
+
+    @staticmethod
+    def find_key_and_value(dic, value):
+        """Find key and value of an item with a value=value
+
+        Parameters
+        ----------
+        dic : dict
+            a dictionary containing a value
+        value : float, int, str
+            an item to find
+        Returns
+        -------
+        key, value
+        """
+        for key, values in dic.items():
+            if isinstance(values, collections.Iterable):
+                for val in values:
+                    if val==value:
+                        return key, val
+            else:
+                if value==values:
+                    return key, value    
     
     @staticmethod
     def split_element_and_number(s):
@@ -113,7 +174,7 @@ class EstimateFieldContributions(object):
     
     @staticmethod
     def _cell_parameters(uuid):
-        """Cell parameters of a given structure
+        """The relax cell parameters of a given structure
         
         Parameters
         ----------
@@ -160,12 +221,6 @@ class EstimateFieldContributions(object):
         if mu_index == len(structure)-1:
             mu_index = -1    #if H is at last     
         return mu_index
-    
-    @staticmethod
-    def index_of_items_from_lists(list_lists, list_items):
-        """
-        """
-        return [list(list_lists).index(item) for item in list_items]
     
     @staticmethod
     def save_data(data, filename, logger=''):
@@ -307,7 +362,7 @@ class EstimateFieldContributions(object):
     
     @property
     def _relax_uuid(self):
-        """get UUID pk of the relaxed structure
+        """Get UUID pk of the relaxed structure
         """
         o_struct = self.load_hyperfine.inputs.parent_folder.creator.inputs.structure
         all_nodes = o_struct.get_outgoing().all_nodes()
@@ -317,13 +372,14 @@ class EstimateFieldContributions(object):
     
     @property
     def pristine_structure(self):
-        """
+        """Copy of pristine (unitcell) structure.
         """
         return self.structure.copy()   
     
     @property
     def equivalent_sites_and_distortions(self):
-        """import SiteDistortions class
+        """Import SiteDistortions class. 
+        #I believe this should be inherited as a parent class
         """
         return SiteDistortions(uuid = self.relax_uuid,
                                structure = self.structure,
@@ -335,7 +391,7 @@ class EstimateFieldContributions(object):
     
     @property
     def initial_structure(self):
-        """Pymatgen initial structure containing muon
+        """AiiDA pymatgen initial structure containing muon
         """
         return self.pymatgen_input_structure(self.relax_uuid)
 
@@ -346,7 +402,7 @@ class EstimateFieldContributions(object):
         return self.muon_index(self.initial_structure)
  
     def _initial_structure(self):
-        """Initial structure
+        """Seperate initial structure into initial host and muon positions
         """
         structure = self.initial_structure.copy()
         mu_site = structure.pop(self.mu_i)
@@ -355,29 +411,45 @@ class EstimateFieldContributions(object):
     @property
     def initial_muon_site(self):
         """Trial initial muon position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite
         """
         return self._initial_structure()[1]
 
     @property
     def initial_ionic_positions(self):
-        """
+        """Initial ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._initial_structure()[0]
 
     def __initial_host_structure(self):
-        """
+        """Initial ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._initial_structure()[0] 
     
     @property
     def initial_host_structure(self):
-        """
+        """Initial host ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite 
         """
         return self.__initial_host_structure()
     
     @property
     def relax_structure(self):
-        """Pymatgen relax structure containing muon
+        """AiiDA pymatgen relax structure containing muon
         """
         return self.pymatgen_output_structure(self.relax_uuid)
     
@@ -388,7 +460,7 @@ class EstimateFieldContributions(object):
         return self.muon_index(self.relax_structure)
     
     def _relax_structure(self):
-        """Relax structure
+        """Seperate relax structure into relax host and muon positions
         """
         structure = self.relax_structure.copy()
         mu_site = structure.pop(self.mu_f)
@@ -397,29 +469,41 @@ class EstimateFieldContributions(object):
     @property
     def relax_muon_site(self):
         """Relax muon position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self._relax_structure()[1]
 
     def __relax_host_structure(self):
-        """
+        """Relax ionic position.
+        
+        Returns
+        -------
+        pymatgen PeriodicSite
         """
         return self._relax_structure()[0]
     
     @property
     def relax_host_structure(self):
-        """
+        """Relax ionic positions
+        
+        Returns
+        -------
+        pymatgen PeriodicSite        
         """
         return self.__relax_host_structure()
     
     @property
     def species_(self):
-        """Ionic species of the structure
+        """Ionic species of the calculated structure
         """
         return self._species(self.relax_uuid)
     
     @property
     def get_species(self):
-        """
+        """Periodic table symbols of ionic species
         """
         species = self.species_
         species[self.mu_f] = 'H'
@@ -429,19 +513,19 @@ class EstimateFieldContributions(object):
 
     @property
     def n_atoms(self):
-        """
+        """The number of host atoms + muon
         """
         return len(self.get_species) 
     
     @property
     def cell_parameter(self):
-        """
+        """The matrix of cell parameters
         """
         return self._cell_parameters(self.relax_uuid)
     
     @property
     def pristine_position_with_muon(self):
-        """
+        """Pristine position of host atoms including muon
         """
         structure = self.pristine_structure_supercell.copy()
         scaled_positions = [site.frac_coords for site in structure]
@@ -450,7 +534,7 @@ class EstimateFieldContributions(object):
 
     @property
     def _link_contact(self):
-        """to check if contact field calculation avai
+        """Check the availability of hyperfine contact field calculations
         """
         links = self.load_hyperfine.get_outgoing().all_link_labels()
         if 'contact_field' in links:
@@ -459,7 +543,7 @@ class EstimateFieldContributions(object):
 
     @property
     def _link_contact_equiv(self):
-        """
+        """Check the availability of hyperfine contact field calculations for equivalent sites
         """
         links = self.load_hyperfine.get_outgoing().all_link_labels()
         if 'contact_field_dict' in links and 'contact_field' in links:
@@ -468,6 +552,13 @@ class EstimateFieldContributions(object):
     
     def _pristine_magnetic_moments_and_direction(self):
         """Magnetic moments of and collinear axis direction
+        and separates it into the directions of each moments and 
+        collinear spin axis.
+        
+        Returns
+        -------
+        moments : numpy.ndarray
+        direction : numpy.ndarray
         """
         structure = self.pristine_structure_supercell
         magmoms = structure.site_properties['magmom']
@@ -489,7 +580,7 @@ class EstimateFieldContributions(object):
     
     @property
     def spin_direction(self):
-        """
+        """Spin collinear axis direction
         """
         return self._spin_direction()
            
@@ -519,6 +610,7 @@ class EstimateFieldContributions(object):
         """Calculated magnetic moments
         """
         moments = self._dft_moments(self.relax_uuid) 
+        # sets muon magnetic moment to zero
         moments[self.mu_f] = 0 
         return moments
     
@@ -527,38 +619,71 @@ class EstimateFieldContributions(object):
         """Calculated magnetic moments from AiiDA DFT
         """
         return self._relax_magnetic_moments()
-    
+
     @property
     def scale_factor(self):
-        """Ratio of max(experimental_moment)/max(calculated_moment)
+        """Calculate ratio of maximum experimental and calculated magnetic moments and use it as a 
+        scaling factor to scale the local magnetic magnetic and contact field to possible
+        close to experimental values. 
         """
-        return max(np.abs(self.input_magnetic_moments))/max(np.abs(self.dft_magnetic_moments))
+        species = self.species_
+        output_moment = self.dft_magnetic_moments
+        output_moment = output_moment.reshape(len(species),)
+
+        # pristine structure
+        structure1 = self.structure.copy()
+        magnetic_structure = CollinearMagneticStructureAnalyzer(structure1, 
+                                                                make_primitive=False)
+
+        magnetic_species_and_magmoms = magnetic_structure.magnetic_species_and_magmoms
+        magnetic_species_and_magmoms_values = list(magnetic_species_and_magmoms.values())
+        magnetic_species_and_magmoms_values = flatten(magnetic_species_and_magmoms_values)
+        max_magnetic_species_and_magmoms_values = max(magnetic_species_and_magmoms_values)
+        mag_specie, max_spin = self.find_key_and_value(magnetic_species_and_magmoms, 
+                                                       max_magnetic_species_and_magmoms_values
+                                                      )
+        #print(mag_specie)
+        magnetic_species = []
+        magnetic_species_index = []
+        for i, msp in  enumerate(species):
+            if mag_specie == self.split_element_and_number(msp)[1]:
+                magnetic_species.append(msp)
+                magnetic_species_index.append(i)
+        magnetic_species_index = np.array(magnetic_species_index)
+        #print(magnetic_species_index)
+        magnetic_atoms_magmom = np.array(output_moment[magnetic_species_index])
+        max_output_moment = max(magnetic_atoms_magmom)
+        # Presumed the calculated moment is never zero
+        return max_spin/max_output_moment
     
     def _local_magnetic_moments_vectors(self):
+        """ The direction of local magnetic moments of host atoms and muon 
+        in Bohr magneton
         """
-        """
-        moments = ((np.tile(self.spin_direction, [self.n_atoms,1] ).T*self.dft_magnetic_moments).T)
+        local_moments = np.array(self.dft_magnetic_moments)
+        moments = ((np.tile(self.spin_direction, [self.n_atoms,1] ).T*local_moments ).T)
         if self.if_scale_moment:
-            moments *= self.scale_factor
+            scale_factor = self.scale_factor
+            moments = ((np.tile(self.spin_direction, [self.n_atoms,1]).T*local_moments*scale_factor).T)
         if self.if_pristine:
             moments = np.array(self.input_magnetic_moments_vectors)          
         return moments*(1.+0.j)    
     
     @property
     def get_magnetic_moments(self):
-        """Magnetic moment in Bohr magneton
+        """Direction of magnetic moment in Bohr magneton
         """
         return self._local_magnetic_moments_vectors()
     
     @property
     def total_magnetization(self):
-        """
+        """ Total magnetization, the sum of magnetic moments
         """
         return np.sum(self.dft_magnetic_moments)
     
     @property
     def magnetization_per_atoms(self):
-        """
+        """Magnetization per number of atoms
         """
         return total_magnetization/(self.n_atoms-1)
     
@@ -584,7 +709,7 @@ class EstimateFieldContributions(object):
         return None
     
     def _contact_field(self):
-        """
+        """ All the contact field
         """
         contact = self._get_contact_field() if self._get_contact_field() is not None else None
         if self.if_equivalent_sites:
@@ -659,7 +784,21 @@ class EstimateFieldContributions(object):
         frac_coords,
         contact_field
     ):
-        """
+        """ This function use MUESR to calculated local field contributions
+        
+        Parameters
+        ----------
+        frac_coords : numpy.ndarray
+            fractional coordinates (with muon)
+        contact_field : numpy.ndarray
+            contact vector in Tesla
+            
+        Returns
+        -------
+        total
+        dipolar
+        lorentz
+        contact
         """
         #print('contact field =', contact_field)
         cell = self.cell_parameter
@@ -680,9 +819,12 @@ class EstimateFieldContributions(object):
             muon_site = frac_coords[self.mu_f]
         else:
             muon_site = frac_coords[-1]
+        # add muon sites
         s.add_muon(muon_site)
         
         if self.if_equivalent_sites:
+            # to reduce compuational load. However, the supercell lattice parameters
+            # are almost identical
             n=30
             sc = [n,n,n]
         else:
@@ -708,7 +850,8 @@ class EstimateFieldContributions(object):
         return B_t[0], B_d[0], B_l[0], B_c[0], 
 
     def calculate(self):
-        """Perfrom muESR calculations
+        """Run the MUESR calculations for all positions and
+        append each contributions to the list
         """
         positions = self.get_position
         contact = self.get_contact
@@ -731,10 +874,10 @@ class EstimateFieldContributions(object):
     
     @property
     def print_logger(self):
-        """
+        """Logger to show summary of each calculations
         """
         if self.link_contact or self.link_contact_equiv:
-            print('calculation ({}) #{} for a hyperfine with UUID :{} and relax structure:{}'.
+            print('    calculation ({}) #{} for a hyperfine with UUID :{} and relax structure:{}'.
                   format(self.scale_logger, 
                          self.uuid_index,
                          self.uuid,
@@ -742,7 +885,7 @@ class EstimateFieldContributions(object):
                         )
                  )
         else:
-            print('calculation ({}) #{} for a relax structure with UUID :{}'.
+            print('    calculation ({}) #{} for a relax structure with UUID :{}'.
                   format(self.scale_logger, 
                          self.uuid_index,
                          self.relax_uuid
@@ -790,7 +933,7 @@ class EstimateFieldContributions(object):
         return np.linalg.norm(self.contact_field(), axis=1)
 
     def get_total_object(self):
-        """
+        """Generate a data object for total field
         """
         data = []
         for i, f in enumerate(self.magnitude_total_field()):            
@@ -798,7 +941,7 @@ class EstimateFieldContributions(object):
         return np.array(data)
     
     def get_dipolar_object(self):
-        """
+        """Generate a data object for dipolar field
         """
         data = []
         for i, f in enumerate(self.magnitude_dipolar_field()):            
@@ -806,7 +949,7 @@ class EstimateFieldContributions(object):
         return np.array(data)
     
     def get_lorentz_object(self):
-        """
+        """Generate a data object for lorentz field
         """
         data = []
         for i, f in enumerate(self.magnitude_lorentz_field()):            
@@ -814,7 +957,7 @@ class EstimateFieldContributions(object):
         return np.array(data)
     
     def get_contact_object(self):
-        """
+        """Generate a data object for contact field
         """
         data = []
         for i, f in enumerate(self.magnitude_contact_field()):            
@@ -822,18 +965,19 @@ class EstimateFieldContributions(object):
         return np.array(data)
     
     def save_muon_sites(self):
-        """
+        """Store all the muon sites in file
         """
         if self.file_name is None:
             self.file_name = 'muon_sites'        
         filename = self.file_name+'_uuid_'+str(self.relax_uuid)+'_sites_'+str(self.uuid_index)+'.txt'
-        print('Save muon sites in {}'.format(filename))
+        print('... Save muon sites in {}'.format(filename))
         self.save_data(self.get_muon_sites, filename, 'Muon site in fractional coordinates of supercell')
         
     def save_total_field(self):
-        """
+        """Store total field data object in a file
         """
         if self.file_name is None:
             self.file_name = 'total_field'        
         filename = self.file_name+'_uuid_'+str(self.relax_uuid)+'_total_field_'+str(self.uuid_index)+'.txt'
         self.save_data(self.magnitude_total_field(), filename, 'Total Field')
+
