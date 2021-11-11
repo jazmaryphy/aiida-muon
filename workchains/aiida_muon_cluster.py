@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import copy
@@ -12,7 +12,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SpacegroupOperations
 from aiida_muon_query import QueryCalculationsFromGroup, QueryNodeEnergyPositions
 
 
-# In[ ]:
+# In[2]:
 
 
 class GenerateCluster(object):
@@ -274,11 +274,11 @@ class GenerateCluster(object):
         
         #headers = ["CLUSTER ##", "PK", "POSITION (x,y,z)", "ENERGY DIFF (meV)", "ENERGY DIFF (meV)"]
         headers = ["CLUSTER ##", "PK", "POSITION (x,y,z)", "ENERGY DIFF/CLUSTER (meV)"]
-        print(tabulate(zipped, headers=headers))
+        print(tabulate(zipped, headers=headers, tablefmt="github"))
         
         
     def distinct_cluster(self, energy_threshold=1.1):
-        """Returns symmetry distint sites from the cluster
+        """Returns symmetry distint sites nodes from the cluster
         """
         index_sorted2 = self.cluster_muon()
         if len(index_sorted2)==0:
@@ -297,3 +297,25 @@ class GenerateCluster(object):
                 if edif <= energy_threshold:
                     uuid_.append(uuid)
         return uuid_
+    
+    def distint_energy(self, energy_threshold=1.1):
+        """Returns symmetry distinct sites energy
+        """
+        index_sorted2 = self.cluster_muon()
+        if len(index_sorted2)==0:
+            print('NO CALCULATIONS! NO CLUSTER!! NO RESULTS!!!')
+            return
+        else:
+            # lets use lowest energy for each cluster
+            low_index = np.array([index[0] for index in index_sorted2])
+            nodes = np.array(self.uuid)
+            energy = np.array(self.energies)        
+            nodes = nodes[low_index]
+            energy = energy[low_index]            
+            energy_ = []
+            energy_diff = [abs(en-energy[0]) for en in energy]
+            for uuid, edif, ener in zip(nodes, energy_diff, energy):
+                if edif <= energy_threshold:
+                    energy_.append(ener)
+        return energy_      
+

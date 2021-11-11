@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 
 # In[1]:
 
@@ -47,17 +47,32 @@ def validate_equiv_site_lists(sites, _):
 def validate_equiv_count(value, _):
     """Validate the `equiv_count` input."""
     if value is not None and value < 1:
-        return 'need at least 1 equiv muon site.'
+        return 'need at least 1 equiv muon site.'  
+
+def LatticeStructureData(lattice_matrix):
+    """We create an empty Structure data,
+    and later on we append the the species and their positions
+    to match the aiida stored structure
+    
+    Parameters:
+    -----------
+              lattice_matrix : 3x3 matrix
+    Returns: StructureData          
+    """   
+    pymatgen_structure = Structure(Lattice(lattice_matrix), [], [])
+    StructureData = DataFactory("structure")
+    return StructureData(pymatgen=pymatgen_structure)
 
 def create_amatch_structure(dict):
     #get_structure(dict):
     """We create a matching StructureData as stored in aiida
+    from a dictionary of lattice property
     Parameters:
               dict : dict
                     lattice: lattice matrix
                     species: specie types
                     positions: fractional positions (Converted to cartesian, this is a MUST)
-
+                    
     Returns: StructureData
     """
     lattice = dict['lattice']
@@ -70,28 +85,15 @@ def create_amatch_structure(dict):
         if symbol=='No':
             symbol='H'
             mupos.append(list(pos))
-        structure.append_atom(position = np.dot(pos, lattice), symbols=symbol, name=kind_name)
+        structure.append_atom(position = np.dot(pos, lattice), symbols=symbol, name=kind_name)    
     return structure, np.array(mupos)
-
-def LatticeStructureData(lattice_matrix):
-    """We create an empty Structure data,
-    and later on we append the the species and their positions
-    to match the aiida stored structure
-    Parameters:
-    -----------
-              lattice_matrix : 3x3 matrix
-    Returns: StructureData
-    """
-    pymatgen_structure = Structure(Lattice(lattice_matrix), [], [])
-    StructureData = DataFactory("structure")
-    return StructureData(pymatgen=pymatgen_structure)
-
+     
 def create_pymatgen_structure(dict):
     """To return a pymatgen structure
     """
     from pymatgen import Lattice, Structure
-
-    lattice = Lattice(dict['lattice'])
+    
+    lattice = Lattice(dict['lattice']) 
     species = dict['species']
     positions = dict['positions']
     return Structure(lattice, species, positions)
@@ -169,7 +171,15 @@ def SpinDensityToContactField(spin_up,spin_dn):
 
 @calcfunction
 def SavePositions(positions):
-    """
+    """AiiDA calfunction to store positions
+    
+    Parameters
+    ----------
+    positions : numpy.ndarray
+    
+    Returns
+    -------
+    AiiDA node of stored data
     """
     positions = np.array(positions.get_array('structure_positions'))
     PossArray = DataFactory('array')()
@@ -178,7 +188,15 @@ def SavePositions(positions):
 
 @calcfunction
 def SaveContactField(field_dict):
-    """
+    """AiiDA function to store contact field dictionary
+    
+    Parameters
+    ----------
+    field_dict : dict
+        contact field dictionary to store
+    Returns
+    -------
+    AiiDA node of stored data
     """
     field = field_dict.get_dict()
     dic = {}
@@ -192,36 +210,36 @@ def SaveContactField(field_dict):
 
 
 class PwContactFieldWorkChain(WorkChain):
-    """Workchain to relax a structure using Quantum ESPRESSO pw.x"""
+    """Workchain to perform hyperfine calculations for a relax structure"""
 
     @classmethod
     def define(cls, spec):
         super(PwContactFieldWorkChain, cls).define(spec)
-
+        
         spec.expose_inputs(PpCalculation, namespace='pp', exclude=('parent_folder','parameters'))
         spec.expose_inputs(PjwfcCalculation, namespace='projwfc', exclude=('parent_folder','parameters'))
-
-#         spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('clean_workdir', 'pw.structure'))
+        
+#         spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('clean_workdir', 'pw.structure'))        
 #         spec.input('equiv_sites', valid_type=orm.List, required=False, validator=validate_scale_factors, help='the list of muon equiv site.')
 #         spec.input('equiv_sites', valid_type=orm.List, help='the list of muon equiv site.')
 #         spec.input('structures', valid_type=orm.Dict, help='a dictionary of structures to use')
 #         spec.input('structure', valid_type=orm.StructureData, help='The pristine supercell pymatgen structure')
 #         spec.input('equiv_sites', valid_type=orm.ArrayData, help='the list of muon equiv site.')
-
+        
         spec.input('equiv_sites', valid_type=orm.Dict, help='a dictionary of structures to use')
         """
-        # equiv_sites contains a collection of nth dictionary  (of equivalent muon sites)
-        # each contains a lattice parameters (3x3 matrix), a list of species and nd.arrayx3
+        # equiv_sites contains a collection of nth dictionary  (of equivalent muon sites) 
+        # each contains a lattice parameters (3x3 matrix), a list of species and nd.arrayx3 
         # of ion positions. Why do that?
         # parsing a dict of pymatgen structure is not JSON serializable
-        # better if we create the structures using 'create_pymatgen_structure' along the way
-        # by parsing the lattice, species and positions of ions (including the muon in) in
-        # 'create_pymatgen_structure(lattice, species, positions)' function
+        # better if we create the structures using 'create_amatch_structure' along the way
+        # by parsing the lattice, species and positions of ions (including the muon in) in 
+        # `create_amatch_structure(lattice, species, positions)` function
         """
-        spec.input('equiv_count', valid_type=orm.Int, default=lambda: orm.Int(1),
-                   help='number of structures to use')
+        spec.input('equiv_count', valid_type=orm.Int, default=lambda: orm.Int(1), 
+                   help='number of structures to use') 
         spec.input('parent_folder', valid_type=orm.RemoteData)
-
+   
         spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(True))
         #spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.input('max_meta_convergence_iterations', valid_type=orm.Int, default=lambda: orm.Int(5))
@@ -249,66 +267,66 @@ class PwContactFieldWorkChain(WorkChain):
                         cls.inspect_scf_next_workchain,
                         cls.run_pp_up,
                         cls.run_pp_dn,
-                        cls.inspect_pp,
+                        cls.inspect_pp,                    
                     ),
                     cls.extract_contact_field_and_structure,
                     #check if all struct done!
-                    cls.final_calc,
-                ),
-                cls.finalize,
+                    cls.final_calc,                
+                ),                
+                cls.finalize,            
             ),
 
         )
-
+        
         spec.exit_code(0, 'NO_ERROR', message='done with calculations, everything works!')
         spec.exit_code(400, 'ERROR_SUB_PROCESS_FAILED_SCF',
-            message='the scf PwBasexWorkChain sub processes did not finish successfully.')
+            message='the scf PwBasexWorkChain sub processes did not finish successfully.')        
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
             message='the relax PwBaseWorkChain sub process failed')
         spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_FINAL_SCF',
             message='the final scf PwBaseWorkChain sub process failed')
         #spec.expose_outputs(PwBaseWorkChain)
-
-        spec.output('contact_field', valid_type=orm.Float,
-                     help='The contact field in Tesla at each calculations.')
-
-#         spec.output('structure_contact_field_dict', valid_type=DataFactory('array'),
+        
+        spec.output('contact_field', valid_type=orm.Float,  
+                     help='The contact field in Tesla at each calculations.')      
+        
+#         spec.output('structure_contact_field_dict', valid_type=DataFactory('array'), 
 #                     help='The list containing all the contact field and structures')
-#         spec.output('structure_contact_field_dict', valid_type=orm.Dict,
+#         spec.output('structure_contact_field_dict', valid_type=orm.Dict, 
 #                     help='A dictionary containing all the contact field and structures')
 
-        spec.output('contact_field_dict', valid_type=orm.Dict,
-                    help='A dictionary containing all the contact field for each structure')
-        spec.output('structure_positions', valid_type=DataFactory('array'),
+        spec.output('contact_field_dict', valid_type=orm.Dict, 
+                    help='A dictionary containing all the contact field for each structure')                   
+        spec.output('structure_positions', valid_type=DataFactory('array'), 
                      help='a list containing the nuclei positions (with mu) for each structures')
-
+        
         spec.expose_outputs(PjwfcCalculation, namespace='projwfc')
         spec.expose_outputs(PwCalculation, namespace='pw')
-
+        
 
     def get_last_calc(self):
         """Get a last calc node"""
         self.last_calc = self.inputs.parent_folder.creator
-
+      
     def get_workchain_builder(self):
         """Return the builder from original relax workchain."""
         last_calc = self.inputs.parent_folder.creator
         return last_calc.get_builder_restart()
-
+        
     def get_current_folder(self):
         """get current folder specify from inputs"""
         return self.inputs.parent_folder
-
+      
     def get_original_relax_structure(self):
-        """Return relax structure for given Node in pymatgen Structure form"""
+        """Return relax structure for given Node in pymatgen Structure form"""  
         last_calc = self.inputs.parent_folder.creator #self.inputs.parent_folder.creator
-        return last_calc.outputs.output_structure
-
+        return last_calc.outputs.output_structure     
+    
     def get_pymatgen(self):
         """get structure in pymatgen form
         """
         return self.get_original_relax_structure().get_pymatgen_structure()
-
+             
     def update_builder_parameters(self):
         #get_pw_parameters(self):
         """to change some original relax calculation parameters"""
@@ -317,36 +335,36 @@ class PwContactFieldWorkChain(WorkChain):
         parameters = restart_builder.parameters.get_dict()
         parameters['CONTROL']['calculation'] = 'scf'
         parameters['CONTROL']['restart_mode'] = 'from_scratch'
-        parameters['SYSTEM']['ecutwfc'] *= (1.0 + 0.1 * self.ctx.iteration) # 1.1
-        parameters['SYSTEM']['ecutrho'] *= (1.0 + 0.1 * self.ctx.iteration) # 1.1
+        parameters['SYSTEM']['ecutwfc'] *= (1.0 + 0.1 * self.ctx.iteration) # 1.1 
+        parameters['SYSTEM']['ecutrho'] *= (1.0 + 0.1 * self.ctx.iteration) # 1.1 
         #parameters['ELECTRONS']['conv_thr'] = 1.0e-2
         #self.ctx.restart_builder.parameters = orm.Dict(dict=parameters)
         return parameters
-
+            
     def setup_init(self):
         """Define structure and builder in the context to be the input structure."""
-        self.ctx.current_parent_folder = self.get_current_folder()
+        self.ctx.current_parent_folder = self.get_current_folder() 
         original_structure = self.get_original_relax_structure()
         self.ctx.restart_builder = self.get_workchain_builder()
         self.ctx.restart_builder.structure = original_structure
 
         self.ctx.restart_builder.structure = MoveImpurityToOrigin(original_structure)
-
+                
         # Continue to submit workchains until this is True
         self.ctx.current_contact_field = None
         self.ctx.is_converged = False
         self.ctx.iteration = 0
-
+        
     def should_refine_contact_field(self):
         """
         Return whether a SCF+PP workchain should be run, which is the case as long as the contact field
         change between two consecutive relaxation runs is larger than the specified volume convergence
         threshold value and the maximum number of meta convergence iterations is not exceeded
         """
-        return not self.ctx.is_converged and self.ctx.iteration < self.inputs.max_meta_convergence_iterations.value
-
+        return not self.ctx.is_converged and self.ctx.iteration < self.inputs.max_meta_convergence_iterations.value        
+    
     def run_init_scf(self):
-        """
+        """ Run initial scf calculation
         """
         self.ctx.iteration += 1
         parameters = self.update_builder_parameters()
@@ -359,8 +377,8 @@ class PwContactFieldWorkChain(WorkChain):
     def inspect_init_scf(self):
         """Check that the first workchain finished successfully or abort the workchain."""
         workchains = self.ctx.workchain_init_scf[-1]
-        self.ctx.current_parent_folder = workchains.outputs.remote_folder
-
+        self.ctx.current_parent_folder = workchains.outputs.remote_folder    
+        
     def run_pp_up(self):
         """ To run a post-processing to compute spin-up contribution of spin density
         """
@@ -491,7 +509,7 @@ class PwContactFieldWorkChain(WorkChain):
         self.out_many(self.exposed_outputs(pw, PwCalculation, namespace='pw'))
         self.out_many(self.exposed_outputs(projwfc, PjwfcCalculation, namespace='projwfc'))
         self.out('contact_field', self.ctx.current_contact_field)
-
+        
     def equiv_site_is_greater_than_one(self):
         """condition to run equiv site"""
         return self.inputs.equiv_count.value > 1
@@ -501,7 +519,7 @@ class PwContactFieldWorkChain(WorkChain):
         if 'equiv_sites' in self.inputs:
            #return self.inputs.equiv_sites.get_array("sites")
            return self.inputs.equiv_sites.get_dict()
-
+        
     def next_workchain(self):
         """Initial worchain for equiv. positions"""
         self.ctx.next_calc = 0
@@ -520,24 +538,24 @@ class PwContactFieldWorkChain(WorkChain):
     def setup_next_workchain(self):
         """init iteration parameters
         """
-        self.ctx.current_parent_folder = self.get_current_folder()
+        self.ctx.current_parent_folder = self.get_current_folder() 
         self.ctx.structure_dict = self.get_equiv_muon_sites()                          #self.site_to_dict() # structures
         list_sites = list(self.ctx.structure_dict.keys())
         self.ctx.label = list_sites[self.ctx.next_calc]
-        self.ctx.this_structure0 = self.ctx.structure_dict[self.ctx.label]             # structure with muon
+        self.ctx.this_structure0 = self.ctx.structure_dict[self.ctx.label]             # structure with muon        
         """
         # Since the index of the positions of ions are distinct and not change in QE.
         # We can match the structure and parse all the available prevous data.
-        """
+        """      
         self.ctx.this_structure, self.ctx.mupos = create_amatch_structure(self.ctx.this_structure0)
         self.ctx.inputs = self.get_workchain_builder()
-        self.ctx.inputs.structure = self.ctx.this_structure
+        self.ctx.inputs.structure = self.ctx.this_structure      
         self.ctx.inputs.structure.store()
         self.ctx.inputs.structure = MoveImpurityToOrigin(self.ctx.this_structure)
         self.ctx.current_contact_field = None
         self.ctx.is_converged = False
         self.ctx.iteration = 0
-
+        
     def scf_next_workchain(self):
         """Initialize and Run the next workchain"""
         self.ctx.iteration += 1
@@ -550,20 +568,20 @@ class PwContactFieldWorkChain(WorkChain):
                     format(running.pk, self.ctx.label, self.ctx.mupos))
         #return self.to_context(workchain_equiv=append_(running))
         return ToContext(workchain_equiv=append_(running))
-
+    
     def inspect_scf_next_workchain(self):
         """Inspect the workchain for any errors"""
         workchains = self.ctx.workchain_equiv[-1]
         self.ctx.current_parent_folder = workchains.outputs.remote_folder
-
+    
     def extract_contact_field_and_structure(self):
         """Extract contact field and the structure used"""
         # store both contact field and structure
         label = str(self.ctx.label)
-        positions = self.ctx.this_structure0['positions']
-        self.ctx.positions_array.append(positions)
+        positions = self.ctx.this_structure0['positions']   
+        self.ctx.positions_array.append(positions)     
         self.ctx.contact_field_dict[label] = self.ctx.current_contact_field.value
-
+        
     def on_terminated(self):
         """
         If the clean_workdir input was set to True, recursively collect all called Calculations by
@@ -589,7 +607,7 @@ class PwContactFieldWorkChain(WorkChain):
             self.report('cleaned remote folders of calculations: {}'.format(' '.join(map(str, cleaned_calcs))))
 
     def final_calc(self):
-        """Final calculations"""
+        """Final calculation """
         if self.ctx.next_calc == self.inputs.equiv_count.value-1: self.ctx.is_finished = True
         self.ctx.next_calc +=1
 
@@ -601,15 +619,16 @@ class PwContactFieldWorkChain(WorkChain):
         # Due to data provenance we cannot return AiiDA data containers that have
         # not been passed through a calcfunction, workfunction or a workchain. Create this now.
         #all_contact_field = store_all_contact_field(DataFactory('list')(list=self.ctx.all_contact_field))
-
+        
         #dict_data = DataFactory('dict')(dict=self.ctx.structure_contact)
-
-        field_dict = DataFactory('dict')(dict=self.ctx.contact_field_dict)
+        
+        field_dict = DataFactory('dict')(dict=self.ctx.contact_field_dict)        
         positions = np.array(self.ctx.positions_array)
         PossArray = DataFactory('array')()
         PossArray.set_array('structure_positions', positions)
-
+        
         # And then store the output on the workchain
         #self.out('structure_contact_field_dict', dict_data)
         self.out('contact_field_dict', SaveContactField(field_dict))
-        self.out('structure_positions', SavePositions(PossArray))
+        self.out('structure_positions', SavePositions(PossArray))      
+

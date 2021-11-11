@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import copy
@@ -12,12 +12,26 @@ from aiida.orm import load_node, Code, Str, Float, Bool, Group, List, Int
 from aiida.plugins import CalculationFactory, WorkflowFactory, DataFactory
 
 
-# In[3]:
+# In[2]:
 
 
 # Override or add parameters:
 def merge(a, b, path=None):
-    "merges b into a, from https://stackoverflow.com/questions/7204805/dictionaries-of-dictionaries-merge"
+    """This function merges a python dictionary b into a and also 
+    allows the option to update the values
+    
+    https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries
+    
+    Parameters
+    ----------
+    a : dict
+        a dictionary to merge into
+    b : dic
+        a dictionary to merge
+    Returns
+    -------
+    a : dict
+    """
     if path is None: path = []
     for key in b:
         if key in a:
@@ -32,7 +46,7 @@ def merge(a, b, path=None):
     return a
 
 
-# In[4]:
+# In[3]:
 
 
 def restart_calc(
@@ -43,6 +57,18 @@ def restart_calc(
     """
     Restart a failed calculation expecially those exceeds wall time (Error:400) 
     and convergence (Error:410)
+    
+    uuid : int
+        A AiiDA identifier of the calculation to restart
+    group : str
+        The name of the group to store AiiDA nodes on AiiDA database. Its advisable to keep track
+        of this name to make sure you organize your data
+    input_namelists : dict
+        A user define Quantum ESPRESSO (QE) input namelists. Default={}  
+        
+    Returns
+    -------
+    Submit calculation to AiiDA daemon 
     """
 
     from aiida_quantumespresso.utils.resources import get_default_options, get_automatic_parallelization_options 
@@ -96,20 +122,6 @@ def restart_calc(
                 if r:
                     print('Your setting for {} has been removed'.format(r))
         
-        # add hubbard parameters
-        lda_plus_u_kind = 0
-        if 'Hubbard_U' in input_namelistss['SYSTEM'].keys():
-            hubbard_dict = input_namelistss['SYSTEM']['Hubbard_U']
-            hubbard_species = _distinct_species(distinct_species)
-            hubbard_parameters = set_hubbard_parameters(hubbard_species, hubbard_dict)  
-            input_namelistss['SYSTEM']['Hubbard_U'] = hubbard_parameters            
-            if 'Hubbard_J' in input_namelistss['SYSTEM'].keys():
-                input_namelistss['SYSTEM']['Hubbard_J'] = hubbard_parameters
-                lda_plus_u_kind = 1
-            if 'Hubbard_V' in input_namelistss['SYSTEM'].keys():
-                input_namelistss['SYSTEM']['Hubbard_V'] = hubbard_parameters               
-                lda_plus_u_kind = 2            
-        input_namelistss['SYSTEM']['lda_plus_u_kind'] = lda_plus_u_kind
         parameters_dict = merge(input_namelistss, parameters_dict) 
        
     restart_builder.parameters = Dict(dict=parameters_dict)

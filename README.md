@@ -65,3 +65,80 @@ where `UUID` can be that of `relax`, `hyperfine` or `group` node. If `group` is 
   5. `if_with_distortions`: If `True` to consider distortions, e.g.  `"bool" = True` 
   6. `"file"`: The name of material to collect experimental data. This name most coincide with the data store in `observed_muon_precession.py` function. 
   7. `UUID`: The assigned primary key (pk) or universally unique identifier (uuid) that identifies the node of a `group`, `hyperfine` or `relax` calculations store in AiiDA database. For more check [this tutorials](https://aiida-tutorials.readthedocs.io/en/tutorial-2021-intro/sections/getting_started/basics.html#fundamentals-basics).
+
+# Merging and Matching with Hungarian Algorithm
+
+Suppose, we want to assign the `experimental_values` to  `calc_values`.
+Clearly, we can collapse/merge some of the `calc_values` to one using a
+`threshold=0.1`. Then using the code in `aiida_hungarian_code.py` 
+as illustrated below
+
+```
+import numpy as np
+
+
+calc_values =         np.array([['$B_{\\mu}^{s}$', '1-1', '0.9119281898999035'],
+                                ['$B_{\\mu}^{s}$', '1-2', '1.0119281898999035'],
+                                ['$B_{\\mu}^{s}$', '1-3', '0.3696106159894605'],
+                                ['$B_{\\mu}^{s}$', '1-4', '0.5802625057445634'],
+                                ['$B_{\\mu}^{s}$', '1-5', '0.9694245004388192'],
+                                ['$B_{\\mu}^{s}$', '1-6', '2.0119281898999035']])
+
+filename = 'Fe'
+threshold = 0.1
+n_data = len(calc_values)
+#positions = np.arange(15).reshape((5, 3))
+positions = np.random.random((n_data,3))
+M = MergeField(calc_values, 
+               positions, 
+               threshold = threshold, 
+               filename=filename
+              )
+M.summary()        
+tot_obj = group_values(M.data_object())
+#print(tot_obj)
+experimental_values = [1.5419936517080495, 1.6600410126043597]
+hungarian = HungarianAlgorithm(tot_obj, experimental_values)
+hungarian.calculate()
+l=hungarian.get_potential_values()
+```
+
+Then we have
+
+## Results
+
+... Saving complete merge index's for calculation #1 to a file : Fe_merge_index_calc_1.txt
+
+... Total number of 6 equiv fields are merged to give 4 distinct field ...
+
+| ##   | POSITION (x,y,z)             |   NET FIELD (Tesla) |   MULTIPLICITY ## |
+|------|------------------------------|---------------------|-------------------|
+| 1    | [0.326576 0.469038 0.083267] |            0.369611 |                 1 |
+| 2    | [0.908194 0.013018 0.336584] |            0.580263 |                 1 |
+| 3*   | [0.937698 0.376522 0.858219] |            0.964427 |                 3 |
+| 4    | [0.15676  0.095283 0.528449] |            2.01193  |                 1 |
+
+	[*] Means calculated muon site ...
+
+ALL EXPERIMENTAL DATA CAN BE ASSIGNED...
+
+BY HUNGARIAN ALGORITHM TO GIVE...
+
+VALUE  #1 :: = 0.9644269600795421 in Tesla from calculation 1.
+
+	CONTAINS 4 SYMMETRY REPLICAS...
+        
+	WITH VALUES = [0.36961062 0.58026251 0.96442696 2.01192819] in Tesla.
+    
+VALUE  #2 :: = 2.0119281898999035 in Tesla from calculation 1.
+
+	CONTAINS 4 SYMMETRY REPLICAS...
+    
+	WITH VALUES = [0.36961062 0.58026251 0.96442696 2.01192819] in Tesla.
+
+MATCH DATA OBJECT = {1: 0.9644269600795421, 2: 2.0119281898999035}
+
+
+```python
+
+```
